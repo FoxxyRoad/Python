@@ -20,20 +20,18 @@ def getoptions(args=sys.argv[1:]):
     zone of the instance.")
     parser.add_argument("-s", "--security_group", help="The security group of\
     the Instance.")
-    parser.add_argument("-tall", "--table_all",  action='store_true',
-                        help="All tables")
     parser.add_argument("-tn", "--table_name", action='store_true',
                         help="Name")
-    parser.add_argument("-to", "--table_os",  action='store_true', help="OS")
-    parser.add_argument("-tp", "--table_p",  action='store_true',
+    parser.add_argument("-to", "--table_os", action='store_true', help="OS")
+    parser.add_argument("-tp", "--table_p", action='store_true',
                         help="PatchDate")
-    parser.add_argument("-tip", "--table_ip",  action='store_true', help="IP")
-    parser.add_argument("-td", "--table_d",  action='store_true', help="Disk")
+    parser.add_argument("-tip", "--table_ip", action='store_true', help="IP")
+    parser.add_argument("-td", "--table_d", action='store_true', help="Disk")
     parser.add_argument("-tit", "--table_it", action='store_true',
                         help="Instance Type")
-    parser.add_argument("-ta", "--table_az",  action='store_true',
+    parser.add_argument("-ta", "--table_az", action='store_true',
                         help="Availability zone")
-    parser.add_argument("-ts", "--table_sg",  action='store_true',
+    parser.add_argument("-ts", "--table_sg", action='store_true',
                         help="Security Group")
 
     options = parser.parse_args(args)
@@ -42,80 +40,77 @@ def getoptions(args=sys.argv[1:]):
 
 options = getoptions(sys.argv[1:])
 
-
 filters = []
+header = []
 
-for instance_type in vars(options):
-    if options.instance_type is not None:
-        filters.append({'Name': 'instance-type', 'Values': \
-            [options.instance_type]}, )
-        break
+if options.name is not None:
+    filters.append({'Name': 'tag:Name', 'Values': [options.name]}, )
+if options.table_name:
+    header.append("Name")
 
-for name in vars(options):
-    if options.name is not None:
-        filters.append({'Name': 'tag:Name', 'Values': [options.name]}, )
-        break
+if options.operating_system is not None:
+    filters.append({'Name': 'tag:Betriebssystem', 'Values': \
+        [options.operating_system]}, )
+if options.table_os:
+    header.append("Betriebssystem")
 
-for operating_system in vars(options):
-    if options.operating_system is not None:
-        filters.append({'Name': 'tag:Betriebssystem', 'Values': \
-            [options.operating_system]}, )
-        break
+if options.patch_date is not None:
+    filters.append({'Name': 'tag:PatchDate', 'Values': \
+        [options.patch_date]}, )
+if options.table_p:
+    header.append("PatchDate")
 
-for patch_date in vars(options):
-    if options.patch_date is not None:
-        filters.append({'Name': 'tag:PatchDate', 'Values': \
-            [options.patch_date]}, )
-        break
+if options.ip_address is not None:
+    filters.append({'Name': 'private-ip-address', 'Values': \
+        [options.ip_address]}, )
+if options.table_ip:
+    header.append("Private IP")
 
-for ip_address in vars(options):
-    if options.ip_address is not None:
-        filters.append({'Name': 'private-ip-address', 'Values': \
-            [options.ip_address]}, )
-        break
+if options.disk is not None:
+    filters.append({'Name': 'tag:DeviceName', 'Values': [options.disk]}, )
+if options.table_d:
+    header.append("Festplatten")
 
-for disk in vars(options):
-    if options.disk is not None:
-        filters.append({'Name': 'tag:DeviceName', 'Values': [options.disk]}, )
-        break
+if options.instance_type is not None:
+    filters.append({'Name': 'instance-type', 'Values': \
+        [options.instance_type]}, )
+if options.table_it:
+    header.append("Instance Typ")
 
-for availability_zone in vars(options):
-    if options.availability_zone is not None:
-        filters.append({'Name': 'availability-zone', 'Values': \
-            [options.availability_zone]}, )
-        break
+if options.availability_zone is not None:
+    filters.append({'Name': 'availability-zone', 'Values': \
+        [options.availability_zone]}, )
+if options.table_az:
+    header.append("Availability Zone")
 
-for security_group in vars(options):
-    if options.security_group is not None:
-        filters.append({'Name': 'instance.group-name', 'Values': \
-            [options.security_group]}, )
-        break
+if options.security_group is not None:
+    filters.append({'Name': 'instance.group-name', 'Values': \
+        [options.security_group]}, )
+if options.table_sg:
+    header.append("Security Group")
 
-data = []
-table = terminaltables.AsciiTable(data)
 
+data = [header]
 output = ec2.describe_instances(Filters=filters)
-
 for reservation in output["Reservations"]:
     for instance in reservation["Instances"]:
-
         # Name
         input_name = ""
         for tags in instance["Tags"]:
             if tags["Key"] == 'Name':
-                input_name = tags["Value"]
+                input_name += tags["Value"]
 
         # Betriebssystem
         input_os = ""
         for tags in instance["Tags"]:
             if tags["Key"] == 'Betriebssystem':
-                input_os = tags["Value"]
+                input_os += tags["Value"]
 
         # PatchDate
         input_pd = ""
         for tags in instance["Tags"]:
             if tags["Key"] == 'PatchDate':
-                input_pd = tags["Value"]
+                input_pd += tags["Value"]
 
         # Groups
         input_sg = ""
@@ -127,54 +122,39 @@ for reservation in output["Reservations"]:
 
         # Festplatten
         input_fp = ""
+        i = 0
         for DeviceName in instance["BlockDeviceMappings"]:
             input_fp += DeviceName["DeviceName"]
+            i += 1
 
             if instance["BlockDeviceMappings"][-1] != DeviceName:
                 input_fp += " | "
 
-row = []
-title = []
-for table_name in vars(options):
-    if options.table_name is not False:
-        title.append('Name')
-        row.append(input_name)
-        break
-for table_os in vars(options):
-    if options.table_os is not False:
-        title.append("Betriebssystem")
-        row.append(input_fp)
-        break
-for table_pd in vars(options):
-    if options.table_p is not False:
-        title.append("PatchDate")
-        row.append(input_pd)
-        break
-for table_ip in vars(options):
-    if options.table_ip is not False:
-        title.append("Private IP")
-        row.append(instance["PrivateIpAddress"])
-        break
-for table_d in vars(options):
-    if options.table_d is not False:
-        title.append("Festplatten")
-        row.append(input_fp)
-        break
-for table_instance in vars(options):
-    if options.table_it is not False:
-        title.append('Instance Typ')
-        row.append(instance["InstanceType"])
-        break
-for table_az in vars(options):
-    if options.table_az is not False:
-        title.append("Availability Zone")
-        row.append(instance["Placement"]["AvailabilityZone"])
-        break
-for table_sg in vars(options):
-    if options.table_sg is not False:
-        title.append("Security Group")
-        row.append(input_sg)
-        break
-data.append(title)
-data.append(row)
+        row = []
+        if "Name" in header:
+            row.append(input_name)
+
+        if "Betriebssystem" in header:
+            row.append(input_os)
+
+        if "PatchDate" in header:
+            row.append(input_pd)
+
+        if "Private IP" in header:
+            row.append(instance["PrivateIpAddress"])
+
+        if "Festplatten" in header:
+            row.append(i)
+
+        if "Instance Typ" in header:
+            row.append(instance["InstanceType"])
+
+        if "Availability Zone" in header:
+            row.append(instance["Placement"]["AvailabilityZone"])
+
+        if "Security Group" in header:
+            row.append(input_sg)
+        data.append(row)
+
+table = terminaltables.AsciiTable(data)
 print(table.table)
